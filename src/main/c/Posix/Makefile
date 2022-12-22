@@ -9,7 +9,7 @@ COMPILE_SOLARIS_X86         := x86_64-sun-solaris2.10-gcc
 COMPILE_SOLARIS_SPARC       := sparc-sun-solaris2.10-gcc
 COMPILE_OSX_X86             := o32-clang
 COMPILE_OSX_X86_64          := o64-clang
-COMPILE_OSX_ARM64           := oa64-clang
+COMPILE_OSX_ARM64           := clang
 COMPILE_ANDROID             := ndk-build
 COMPILE_FREEBSD_X86         := clang -target i386-unknown-freebsd11.2 --sysroot=$(HOME)/x-tools/i386-unknown-freebsd11.2
 COMPILE_FREEBSD_X86_64      := clang -target x86_64-unknown-freebsd11.2 --sysroot=$(HOME)/x-tools/x86_64-unknown-freebsd11.2
@@ -46,7 +46,7 @@ FULL_CLASS                  := com.fazecast.jSerialComm.SerialPort
 JAVA_CLASS_DIR              := $(BUILD_DIR)/com/fazecast/jSerialComm
 JNI_HEADER                  := ../com_fazecast_jSerialComm_SerialPort.h
 JAVA_CLASS                  := $(JAVA_CLASS_DIR)/SerialPort.class
-JFLAGS                      := -source 1.6 -target 1.6 -Xlint:-options
+JFLAGS                      := -source 1.7 -target 1.7 -Xlint:-options
 JAVAC                       := "$(JDK_HOME)/bin/javac"
 
 # Architecture-dependent library variables
