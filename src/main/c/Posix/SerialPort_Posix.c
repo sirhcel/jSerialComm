@@ -790,6 +790,9 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configTimeou
 		options.c_cc[VTIME] = 0;
 	}
 
+	// FIXME: Set handshake flags depending on port configuration.
+	options.c_cflag |= CRTSCTS;
+
 	// Apply changes
 	if (fcntl(port->handle, F_SETFL, flags))
 	{
