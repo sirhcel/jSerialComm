@@ -582,7 +582,7 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 	// Clear any serial port flags and set up raw non-canonical port parameters
 	struct termios options = { 0 };
 	printf("tcgetattr ...\n");
-	tcgetattr(port->handle, &options);
+	result = tcgetattr(port->handle, &options);
 	if (result < 0) {
 		fprintf(stderr, "tcgetattr failed: %s (%d)\n", strerror(errno), errno);
 		exit(1);
@@ -645,7 +645,7 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 	print_termios(&options);
 
 	printf("tcsetattr ...\n");
-	if (tcsetattr(port->handle, TCSANOW, &options) || tcsetattr(port->handle, TCSANOW, &options))
+	if (tcsetattr(port->handle, TCSANOW, &options) /* || tcsetattr(port->handle, TCSANOW, &options) */)
 	{
 		fprintf(stderr, "tcsetattr failed: %s (%d)\n", strerror(errno), errno);
 		exit(1);
@@ -731,13 +731,22 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 
 JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configTimeouts(JNIEnv *env, jobject obj, jlong serialPortPointer, jint timeoutMode, jint readTimeout, jint writeTimeout, jint eventsToMonitor)
 {
+	fprintf(stderr, "Java_com_fazecast_jSerialComm_SerialPort_configTimeouts\n");
+
 	// Retrieve the existing port configuration
+	int result = 0;
 	int flags = 0;
 	struct termios options = { 0 };
 	serialPort *port = (serialPort*)(intptr_t)serialPortPointer;
 	baud_rate baudRate = (*env)->GetIntField(env, obj, baudRateField);
 	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
-	tcgetattr(port->handle, &options);
+	printf("tcgetattr ...\n");
+	result = tcgetattr(port->handle, &options);
+	if (result < 0) {
+		fprintf(stderr, "tcgetattr failed: %s (%d)\n", strerror(errno), errno);
+		exit(1);
+	}
+	print_termios(&options);
 
 	// Set up the requested event flags
 	port->eventsMask = eventsToMonitor;
@@ -788,12 +797,17 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configTimeou
 		port->errorNumber = lastErrorNumber = errno;
 		return JNI_FALSE;
 	}
+	printf("tcsetattr ...\n");
 	if (tcsetattr(port->handle, TCSANOW, &options) || tcsetattr(port->handle, TCSANOW, &options))
 	{
+		fprintf(stderr, "tcsetattr failed: %s (%d)\n", strerror(errno), errno);
+		exit(1);
+
 		port->errorLineNumber = lastErrorLineNumber = __LINE__ - 2;
 		port->errorNumber = lastErrorNumber = errno;
 		return JNI_FALSE;
 	}
+	print_termios(&options);
 	if (!getBaudRateCode(baudRate) && setBaudRateCustom(port->handle, baudRate))
 	{
 		port->errorLineNumber = lastErrorLineNumber = __LINE__ - 2;
