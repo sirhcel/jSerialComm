@@ -121,6 +121,20 @@ static void enumeratePorts(void)
 	portsEnumerated = 1;
 }
 
+void print_termios(const struct termios *config) {
+    printf("    c_iflag: 0x%08lx\n", config->c_iflag);
+    printf("    c_oflag: 0x%08lx\n", config->c_oflag);
+    printf("    c_cflag: 0x%08lx\n", config->c_cflag);
+    printf("    c_lflag: 0x%08lx\n", config->c_lflag);
+    printf("    c_cc:");
+    for (size_t i = 0; i < NCCS; ++i) {
+        printf(" 0x%02x", config->c_cc[i]);
+    }
+    printf("\n");
+    printf("    c_ispeed: %lu\n", config->c_ispeed);
+    printf("    c_ospeed: %lu\n", config->c_ospeed);
+}
+
 #if defined(__linux__) && !defined(__ANDROID__)
 
 // Event listening threads
@@ -515,6 +529,8 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 
 JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(JNIEnv *env, jobject obj, jlong serialPortPointer)
 {
+	fprintf(stderr, "Java_com_fazecast_jSerialComm_SerialPort_configPort\n");
+
 	// Retrieve port parameters from the Java class
 	serialPort *port = (serialPort*)(intptr_t)serialPortPointer;
 	baud_rate baudRate = (*env)->GetIntField(env, obj, baudRateField);
@@ -561,10 +577,19 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 	unsigned char rs485RxDuringTx = (*env)->GetBooleanField(env, obj, rs485RxDuringTxField);
 	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 #endif
+	int result = -1;
 
 	// Clear any serial port flags and set up raw non-canonical port parameters
 	struct termios options = { 0 };
+	printf("tcgetattr ...\n");
 	tcgetattr(port->handle, &options);
+	if (result < 0) {
+		fprintf(stderr, "tcgetattr failed: %s (%d)\n", strerror(errno), errno);
+		exit(1);
+	}
+	print_termios(&options);
+
+	printf("configuring flags ...\n");
 	options.c_cc[VSTART] = (unsigned char)xonStartChar;
 	options.c_cc[VSTOP] = (unsigned char)xoffStopChar;
 	options.c_iflag &= ~(IGNBRK | BRKINT | PARMRK | ISTRIP | INLCR | INPCK | IGNPAR | IGNCR | ICRNL | IXON | IXOFF);
@@ -592,19 +617,52 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 		options.c_iflag |= IXOFF;
 	if ((flowControl & com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_XONXOFF_OUT_ENABLED) > 0)
 		options.c_iflag |= IXON;
+	print_termios(&options);
 
 	// Set the baud rate and apply all changes
 	baud_rate baudRateCode = getBaudRateCode(baudRate);
 	if (!baudRateCode)
 		baudRateCode = B38400;
-	cfsetispeed(&options, baudRateCode);
+
+	// printf("cfmakeraw ...\n");
+	// cfmakeraw(&config);
+	// print_termios(&config);
+
+	printf("cfsetispeed ...\n");
+	result = cfsetispeed(&options, baudRateCode);
+	if (result < 0) {
+		fprintf(stderr, "cfsetispeed failed: %s (%d)\n", strerror(errno), errno);
+		exit(1);
+	}
+	print_termios(&options);
+
+	printf("cfsetospeed ...\n");
 	cfsetospeed(&options, baudRateCode);
+	if (result < 0) {
+		fprintf(stderr, "cfsetospeed failed: %s (%d)\n", strerror(errno), errno);
+		exit(1);
+	}
+	print_termios(&options);
+
+	printf("tcsetattr ...\n");
 	if (tcsetattr(port->handle, TCSANOW, &options) || tcsetattr(port->handle, TCSANOW, &options))
 	{
+		fprintf(stderr, "tcsetattr failed: %s (%d)\n", strerror(errno), errno);
+		exit(1);
+
 		port->errorLineNumber = lastErrorLineNumber = __LINE__ - 2;
 		port->errorNumber = lastErrorNumber = errno;
 		return JNI_FALSE;
 	}
+	print_termios(&options);
+
+	printf("tcgetattr for checking status ...\n");
+	result = tcgetattr(port->handle, &options);
+	if (result < 0) {
+		fprintf(stderr, "tcgetattr failed: %s (%d)\n", strerror(errno), errno);
+		exit(1);
+	}
+	print_termios(&options);
 
 #if defined(__linux__)
 
