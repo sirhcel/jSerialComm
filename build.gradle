@@ -12,7 +12,7 @@ plugins {
 
 group = 'com.fazecast'
 archivesBaseName = 'jSerialComm'
-version = '2.10.0'
+version = '2.10.0-SNAPSHOT'
 ext.moduleName = 'com.fazecast.jSerialComm'
 
 if (hasProperty('productionBuild') && productionBuild == 'true')
@@ -24,8 +24,8 @@ if (hasProperty('productionBuild') && productionBuild == 'true')
 else
   project.ext.java9Home = org.gradle.internal.jvm.Jvm.current().getJavaHome()
 
-sourceCompatibility = 1.6
-targetCompatibility = 1.6
+sourceCompatibility = 9
+targetCompatibility = 9
 javadoc.options.links("https://docs.oracle.com/javase/9/docs/api/")
 
 if (hasProperty('productionBuild') && productionBuild == 'true')
